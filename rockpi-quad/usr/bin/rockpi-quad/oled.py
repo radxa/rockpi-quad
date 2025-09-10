@@ -74,6 +74,12 @@ def put_disk_info():
             {'xy': (0, 2), 'text': text1, 'fill': 255, 'font': font['12']},
             {'xy': (0, 18), 'text': text2, 'fill': 255, 'font': font['12']},
         ]
+    elif len(k) == 2:
+        text2 = 'Disk: {} {}'.format(k[1], v[1])
+        page = [
+            {'xy': (0, 2), 'text': text1, 'fill': 255, 'font': font['12']},
+            {'xy': (0, 18), 'text': text2, 'fill': 255, 'font': font['12']},
+        ]
     else:
         page = [{'xy': (0, 2), 'text': text1, 'fill': 255, 'font': font['14']}]
 

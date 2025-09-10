@@ -46,8 +46,8 @@ model=$(tr -d '\0' </proc/device-tree/model)
 case "$model" in
 *"Raspberry Pi 4"*)
   raspi-config nonint do_i2c 0
-  if ! grep -q "dtoverlay=pwm,pin=13,func=4" /boot/firmware/config.txt; then
-    echo "dtoverlay=pwm,pin=13,func=4" >> /boot/firmware/config.txt
+  if ! grep -q "dtoverlay=pwm-2chan,pin=12,func=4,pin2=13,func2=4" /boot/config.txt; then
+    echo "dtoverlay=pwm-2chan,pin=12,func=4,pin2=13,func2=4" >> /boot/config.txt
   fi
   mv /usr/bin/rockpi-quad/env/rpi4.env /etc/rockpi-quad.env
   checkReboot

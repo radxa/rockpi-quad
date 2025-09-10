@@ -12,14 +12,13 @@ pin = None
 
 
 class Pwm:
-    def __init__(self, chip):
+    def __init__(self, chip, fun):
         self.period_value = None
         try:
             int(chip)
             chip = f'pwmchip{chip}'
         except ValueError:
             pass
-        fun = os.environ.get('PWM_FUN', '0')
         self.filepath = f"/sys/class/pwm/{chip}/pwm{fun}/"
         try:
             with open(f"/sys/class/pwm/{chip}/export", 'w') as f:
@@ -51,17 +50,20 @@ class Pwm:
 
 
 class Gpio:
-
     def tr(self):
         while True:
-            self.line.set_value(1)
+            self.request.set_value(1)
             time.sleep(self.value[0])
-            self.line.set_value(0)
+            self.request.set_value(0)
             time.sleep(self.value[1])
 
     def __init__(self, period_s):
-        self.line = gpiod.Chip(os.environ['FAN_CHIP']).get_line(int(os.environ['FAN_LINE']))
-        self.line.request(consumer='fan', type=gpiod.LINE_REQ_DIR_OUT)
+        chip = gpiod.Chip(os.environ['FAN_CHIP'])
+        line = chip.get_line(int(os.environ['FAN_LINE']))
+        config = gpiod.LineRequest()
+        config.consumer = 'fan'
+        config.request_type = gpiod.LineRequest.DIRECTION_OUTPUT
+        self.request = line.request(config, default_vals=[0])
         self.value = [period_s / 2, period_s / 2]
         self.period_s = period_s
         self.thread = threading.Thread(target=self.tr, daemon=True)
@@ -92,18 +94,20 @@ def get_dc(cache={}):
 def change_dc(dc, cache={}):
     if dc != cache.get('dc'):
         cache['dc'] = dc
-        pin.write(dc)
+        for pin in pins:
+            pin.write(dc)
 
 
 def running():
-    global pin
+    global pins
     if os.environ['HARDWARE_PWM'] == '1':
         chip = os.environ['PWMCHIP']
-        pin = Pwm(chip)
-        pin.period_us(40)
-        pin.enable(True)
+        pins = [Pwm(chip, fun) for fun in os.environ.get('PWM_FUN', '0').split(',')]
+        for pin in pins:
+            pin.period_us(40)
+            pin.enable(True)
     else:
-        pin = Gpio(0.025)
+        pins = [Gpio(0.025)]
     while True:
         change_dc(get_dc())
         time.sleep(1)
