@@ -96,18 +96,24 @@ def read_conf():
 
 def read_key(pattern, size):
     CHIP_NAME = os.environ['BUTTON_CHIP']
-    LINE_NUMBER = os.environ['BUTTON_LINE']
+    LINE_NUMBER = int(os.environ['BUTTON_LINE'])
 
     s = ''
-    chip = gpiod.Chip(str(CHIP_NAME))
-    line = chip.get_line(int(LINE_NUMBER))
-    line.request(consumer='hat_button', type=gpiod.LINE_REQ_DIR_OUT)
-    line.set_value(1)
+    chip = gpiod.Chip(f"/dev/gpiochip{CHIP_NAME}")
+    settings = gpiod.LineSettings(direction=gpiod.line.Direction.OUTPUT)
+    request = chip.request_lines(
+        config={LINE_NUMBER: settings},
+        consumer='hat_button',
+        output_values={LINE_NUMBER: gpiod.line.Value.ACTIVE},
+    )
 
     while True:
-        s = s[-size:] + str(line.get_value())
+        val = 1 if request.get_value(LINE_NUMBER) == gpiod.line.Value.ACTIVE else 0
+        s = s[-size:] + str(val)
         for t, p in pattern.items():
             if p.match(s):
+                request.release()
+                chip.close()
                 return t
         time.sleep(0.1)
 
@@ -164,12 +170,20 @@ def get_func(key):
 
 
 def disk_turn_on():
-    line1 = gpiod.Chip(os.environ['SATA_CHIP']).get_line(int(os.environ['SATA_LINE_1']))
-    line1.request(consumer='SATA_LINE_1', type=gpiod.LINE_REQ_DIR_OUT)
-    line1.set_value(1)
-    line2 = gpiod.Chip(os.environ['SATA_CHIP']).get_line(int(os.environ['SATA_LINE_2']))
-    line2.request(consumer='SATA_LINE_2', type=gpiod.LINE_REQ_DIR_OUT)
-    line2.set_value(1)
+    chip_name = os.environ['SATA_CHIP']
+    line1 = int(os.environ['SATA_LINE_1'])
+    line2 = int(os.environ['SATA_LINE_2'])
+
+    settings = gpiod.LineSettings(direction=gpiod.line.Direction.OUTPUT)
+    with gpiod.Chip(f"/dev/gpiochip{chip_name}") as chip:
+        request = chip.request_lines(
+            config={(line1, line2): settings},
+            consumer='sata_power',
+            output_values={
+                line1: gpiod.line.Value.ACTIVE,
+                line2: gpiod.line.Value.ACTIVE,
+            },
+        )
 
 
 conf = {'disk': [], 'idx': mp.Value('d', -1), 'run': mp.Value('d', 1)}
