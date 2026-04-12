@@ -54,14 +54,19 @@ class Gpio:
 
     def tr(self):
         while True:
-            self.line.set_value(1)
+            self.request.set_value(self.line_offset, gpiod.line.Value.ACTIVE)
             time.sleep(self.value[0])
-            self.line.set_value(0)
+            self.request.set_value(self.line_offset, gpiod.line.Value.INACTIVE)
             time.sleep(self.value[1])
 
     def __init__(self, period_s):
-        self.line = gpiod.Chip(os.environ['FAN_CHIP']).get_line(int(os.environ['FAN_LINE']))
-        self.line.request(consumer='fan', type=gpiod.LINE_REQ_DIR_OUT)
+        self.line_offset = int(os.environ['FAN_LINE'])
+        chip = gpiod.Chip(f"/dev/gpiochip{os.environ['FAN_CHIP']}")
+        settings = gpiod.LineSettings(direction=gpiod.line.Direction.OUTPUT)
+        self.request = chip.request_lines(
+            config={self.line_offset: settings},
+            consumer='fan',
+        )
         self.value = [period_s / 2, period_s / 2]
         self.period_s = period_s
         self.thread = threading.Thread(target=self.tr, daemon=True)

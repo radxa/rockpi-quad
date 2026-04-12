@@ -10,3 +10,4 @@ if [ -d /run/systemd/system ]; then
 fi
 
 rm -rf /usr/bin/rockpi-quad/__pycache__
+rm -rf /usr/share/rockpi-quad/venv
