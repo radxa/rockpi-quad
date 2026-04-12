@@ -31,13 +31,12 @@ armbian_require_overlay() {
   fi
 }
 
+VENV_DIR="/usr/share/rockpi-quad/venv"
 requirement_path="/usr/bin/rockpi-quad/requirements.txt"
 
-if [ "$(python3 -c 'import sys; print(f"{sys.version_info.minor >= 11}")')" = "True" ]; then
-  pip3 install -r $requirement_path --break-system-packages
-else
-  pip3 install -r $requirement_path
-fi
+python3 -m venv --system-site-packages "$VENV_DIR"
+"$VENV_DIR/bin/pip" install --upgrade pip
+"$VENV_DIR/bin/pip" install -r "$requirement_path"
 
 systemctl enable rockpi-quad.service
 
