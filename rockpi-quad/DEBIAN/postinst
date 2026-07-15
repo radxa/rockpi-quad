@@ -33,6 +33,21 @@ armbian_require_overlay() {
 
 VENV_DIR="/usr/share/rockpi-quad/venv"
 requirement_path="/usr/bin/rockpi-quad/requirements.txt"
+RPI_CONFIG="/boot/firmware/config.txt"
+RPI_PWM_OVERLAY="dtoverlay=pwm-2chan,pin=12,func=4,pin2=13,func2=4"
+RPI_OLD_PWM_OVERLAY="dtoverlay=pwm,pin=13,func=4"
+
+ensure_rpi_pwm_overlay() {
+  config_file="$1"
+  old_overlay="$2"
+  overlay="$3"
+
+  touch "$config_file"
+  sed -i "\|^${old_overlay}$|d" "$config_file"
+  if ! grep -Fxq "$overlay" "$config_file"; then
+    echo "$overlay" >> "$config_file"
+  fi
+}
 
 python3 -m venv --system-site-packages "$VENV_DIR"
 "$VENV_DIR/bin/python3" -m pip install --upgrade pip
@@ -45,9 +60,7 @@ model=$(tr -d '\0' </proc/device-tree/model)
 case "$model" in
 *"Raspberry Pi 4"*)
   raspi-config nonint do_i2c 0
-  if ! grep -q "dtoverlay=pwm,pin=13,func=4" /boot/firmware/config.txt; then
-    echo "dtoverlay=pwm,pin=13,func=4" >> /boot/firmware/config.txt
-  fi
+  ensure_rpi_pwm_overlay "$RPI_CONFIG" "$RPI_OLD_PWM_OVERLAY" "$RPI_PWM_OVERLAY"
   cp /usr/bin/rockpi-quad/env/rpi4.env /etc/rockpi-quad.env
   checkReboot
   ;;

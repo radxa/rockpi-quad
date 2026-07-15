@@ -8,25 +8,23 @@ import gpiod
 
 import misc
 
-pin = None
 GPIOD_V2 = hasattr(gpiod, 'LineSettings')
 
 
 class Pwm:
-    def __init__(self, chip):
+    def __init__(self, chip, fun):
         self.period_value = None
         try:
             int(chip)
             chip = f'pwmchip{chip}'
         except ValueError:
             pass
-        fun = os.environ.get('PWM_FUN', '0')
         self.filepath = f"/sys/class/pwm/{chip}/pwm{fun}/"
         try:
             with open(f"/sys/class/pwm/{chip}/export", 'w') as f:
                 f.write(fun)
         except OSError:
-            print("Waring: init pwm error")
+            print("Warning: init pwm error")
             traceback.print_exc()
 
     def period(self, ns: int):
@@ -111,18 +109,21 @@ def get_dc(cache={}):
 def change_dc(dc, cache={}):
     if dc != cache.get('dc'):
         cache['dc'] = dc
-        pin.write(dc)
+        for pin in pins:
+            pin.write(dc)
 
 
 def running():
-    global pin
+    global pins
+
     if os.environ['HARDWARE_PWM'] == '1':
         chip = os.environ['PWMCHIP']
-        pin = Pwm(chip)
-        pin.period_us(40)
-        pin.enable(True)
+        pins = [Pwm(chip, fun) for fun in os.environ.get('PWM_FUN', '0').split(',')]
+        for pin in pins:
+            pin.period_us(40)
+            pin.enable(True)
     else:
-        pin = Gpio(0.025)
+        pins = [Gpio(0.025)]
     while True:
         change_dc(get_dc())
         time.sleep(1)
